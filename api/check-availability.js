@@ -1,0 +1,103 @@
+export default async function handler(req, res) {
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+
+  if (req.method === 'OPTIONS') return res.status(200).end();
+  if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
+
+  const { slug, datetime, duration_minutes } = req.body;
+
+  if (!slug || !datetime) {
+    return res.status(400).json({ error: 'Missing slug or datetime' });
+  }
+
+  try {
+    const supabaseUrl = process.env.SUPABASE_URL;
+    const supabaseKey = process.env.SUPABASE_SERVICE_KEY;
+
+    const clientRes = await fetch(
+      `${supabaseUrl}/rest/v1/clients?slug=eq.${slug}&select=access_token,refresh_token,token_expiry,calendar_id`,
+      {
+        headers: {
+          'apikey': supabaseKey,
+          'Authorization': `Bearer ${supabaseKey}`
+        }
+      }
+    );
+
+    const clients = await clientRes.json();
+
+    if (!clients || clients.length === 0) {
+      return res.status(200).json({ available: true, message: 'No calendar connected' });
+    }
+
+    let { access_token, refresh_token, token_expiry, calendar_id } = clients[0];
+
+    const now = Math.floor(Date.now() / 1000);
+    if (token_expiry && now >= token_expiry - 60 && refresh_token) {
+      const refreshRes = await fetch('https://oauth2.googleapis.com/token', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: new URLSearchParams({
+          refresh_token,
+          client_id: process.env.GOOGLE_CLIENT_ID,
+          client_secret: process.env.GOOGLE_CLIENT_SECRET,
+          grant_type: 'refresh_token'
+        })
+      });
+      const refreshed = await refreshRes.json();
+      if (refreshed.access_token) {
+        access_token = refreshed.access_token;
+        await fetch(`${supabaseUrl}/rest/v1/clients?slug=eq.${slug}`, {
+          method: 'PATCH',
+          headers: {
+            'Content-Type': 'application/json',
+            'apikey': supabaseKey,
+            'Authorization': `Bearer ${supabaseKey}`
+          },
+          body: JSON.stringify({
+            access_token: refreshed.access_token,
+            token_expiry: Math.floor(Date.now() / 1000) + (refreshed.expires_in || 3600)
+          })
+        });
+      }
+    }
+
+    const startTime = new Date(datetime).toISOString();
+    const endTime = new Date(new Date(datetime).getTime() + (duration_minutes || 60) * 60000).toISOString();
+
+    const freebusyRes = await fetch('https://www.googleapis.com/calendar/v3/freeBusy', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${access_token}`
+      },
+      body: JSON.stringify({
+        timeMin: startTime,
+        timeMax: endTime,
+        items: [{ id: calendar_id || 'primary' }]
+      })
+    });
+
+    const freebusy = await freebusyRes.json();
+
+    if (freebusy.error) {
+      console.error('Freebusy error:', freebusy.error);
+      return res.status(200).json({ available: true, message: 'Could not check calendar' });
+    }
+
+    const busy = freebusy.calendars?.[calendar_id || 'primary']?.busy || [];
+    const isAvailable = busy.length === 0;
+
+    return res.status(200).json({
+      available: isAvailable,
+      busy_slots: busy,
+      message: isAvailable ? 'Time slot is available!' : 'Sorry, that time is already booked.'
+    });
+
+  } catch(error) {
+    console.error('Availability check error:', error);
+    return res.status(200).json({ available: true, message: 'Could not check calendar' });
+  }
+}
