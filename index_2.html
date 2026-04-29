@@ -1,0 +1,417 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Book Now – The Booker AI</title>
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --ink: #0a0a0a;
+    --paper: #f5f0e8;
+    --accent: #c8ff00;
+    --muted: #888;
+    --card: #fff;
+    --radius: 16px;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: 'DM Sans', sans-serif;
+    background: var(--ink);
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+  }
+  .widget {
+    background: var(--paper);
+    border-radius: 24px;
+    width: 100%;
+    max-width: 420px;
+    overflow: hidden;
+    box-shadow: 0 40px 80px rgba(0,0,0,0.4);
+  }
+  .widget-header {
+    background: var(--ink);
+    padding: 24px;
+    display: flex;
+    align-items: center;
+    gap: 14px;
+  }
+  .biz-avatar {
+    width: 48px; height: 48px;
+    border-radius: 12px;
+    background: var(--accent);
+    display: flex; align-items: center; justify-content: center;
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 22px;
+    color: var(--ink);
+    flex-shrink: 0;
+  }
+  .biz-info h2 {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 20px;
+    color: #fff;
+    letter-spacing: 1px;
+  }
+  .biz-info p {
+    font-size: 12px;
+    color: var(--muted);
+    margin-top: 2px;
+  }
+  .status-dot {
+    width: 8px; height: 8px;
+    background: var(--accent);
+    border-radius: 50%;
+    display: inline-block;
+    margin-right: 6px;
+    animation: pulse 2s infinite;
+  }
+  @keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.4; }
+  }
+  .chat-area {
+    padding: 20px;
+    height: 320px;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    background: var(--paper);
+  }
+  .chat-area::-webkit-scrollbar { width: 4px; }
+  .chat-area::-webkit-scrollbar-thumb { background: #ddd; border-radius: 4px; }
+  .bubble {
+    max-width: 85%;
+    padding: 12px 16px;
+    border-radius: 18px;
+    font-size: 14px;
+    line-height: 1.5;
+    animation: fadeUp 0.3s ease;
+  }
+  @keyframes fadeUp {
+    from { opacity: 0; transform: translateY(8px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+  .bubble.bot {
+    background: var(--ink);
+    color: #fff;
+    border-bottom-left-radius: 4px;
+    align-self: flex-start;
+  }
+  .bubble.user {
+    background: var(--accent);
+    color: var(--ink);
+    border-bottom-right-radius: 4px;
+    align-self: flex-end;
+    font-weight: 500;
+  }
+  .bubble.typing {
+    background: var(--ink);
+    color: #fff;
+    align-self: flex-start;
+    border-bottom-left-radius: 4px;
+    display: flex;
+    gap: 4px;
+    align-items: center;
+    padding: 14px 18px;
+  }
+  .dot { width: 6px; height: 6px; background: var(--accent); border-radius: 50%; animation: bounce 1.2s infinite; }
+  .dot:nth-child(2) { animation-delay: 0.2s; }
+  .dot:nth-child(3) { animation-delay: 0.4s; }
+  @keyframes bounce { 0%,60%,100% { transform: translateY(0); } 30% { transform: translateY(-6px); } }
+  .quick-replies {
+    padding: 0 20px 12px;
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+  }
+  .qr-btn {
+    background: transparent;
+    border: 1.5px solid var(--ink);
+    border-radius: 100px;
+    padding: 6px 14px;
+    font-size: 12px;
+    font-family: 'DM Sans', sans-serif;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s;
+    color: var(--ink);
+  }
+  .qr-btn:hover { background: var(--ink); color: var(--paper); }
+  .input-row {
+    padding: 16px 20px 20px;
+    display: flex;
+    gap: 10px;
+    border-top: 1px solid rgba(0,0,0,0.08);
+    background: var(--paper);
+  }
+  .msg-input {
+    flex: 1;
+    border: 1.5px solid rgba(0,0,0,0.15);
+    border-radius: 100px;
+    padding: 10px 18px;
+    font-family: 'DM Sans', sans-serif;
+    font-size: 14px;
+    background: #fff;
+    outline: none;
+    color: var(--ink);
+    transition: border-color 0.2s;
+  }
+  .msg-input:focus { border-color: var(--ink); }
+  .send-btn {
+    width: 42px; height: 42px;
+    border-radius: 50%;
+    background: var(--ink);
+    border: none;
+    cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+    transition: transform 0.15s, background 0.2s;
+    flex-shrink: 0;
+  }
+  .send-btn:hover { background: #333; transform: scale(1.05); }
+  .send-btn svg { width: 18px; height: 18px; fill: var(--accent); }
+  .booking-card {
+    margin: 0 20px 20px;
+    background: var(--ink);
+    border-radius: var(--radius);
+    padding: 18px;
+    color: #fff;
+    display: none;
+  }
+  .booking-card.show { display: block; animation: fadeUp 0.3s ease; }
+  .booking-card h3 {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 18px;
+    letter-spacing: 1px;
+    color: var(--accent);
+    margin-bottom: 12px;
+  }
+  .booking-row {
+    display: flex;
+    justify-content: space-between;
+    font-size: 13px;
+    padding: 6px 0;
+    border-bottom: 1px solid rgba(255,255,255,0.08);
+  }
+  .booking-row:last-of-type { border-bottom: none; }
+  .booking-row span:first-child { color: var(--muted); }
+  .booking-row span:last-child { font-weight: 500; }
+  .confirm-btn {
+    width: 100%;
+    margin-top: 14px;
+    background: var(--accent);
+    border: none;
+    border-radius: 10px;
+    padding: 12px;
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 16px;
+    letter-spacing: 1px;
+    cursor: pointer;
+    color: var(--ink);
+    transition: opacity 0.2s;
+  }
+  .confirm-btn:hover { opacity: 0.85; }
+  .powered {
+    text-align: center;
+    font-size: 11px;
+    color: var(--muted);
+    padding: 12px;
+    background: var(--paper);
+  }
+  .powered a { color: var(--ink); font-weight: 500; text-decoration: none; }
+</style>
+</head>
+<body>
+
+<div class="widget">
+  <div class="widget-header">
+    <div class="biz-avatar" id="biz-avatar">KS</div>
+    <div class="biz-info">
+      <h2 id="biz-name">Kali Studio</h2>
+      <p><span class="status-dot"></span>AI Booking Assistant • Always open</p>
+    </div>
+  </div>
+
+  <div class="chat-area" id="chat"></div>
+
+  <div class="quick-replies" id="quick-replies"></div>
+
+  <div class="booking-card" id="booking-card">
+    <h3>Your booking</h3>
+    <div class="booking-row"><span>Service</span><span id="bc-service">—</span></div>
+    <div class="booking-row"><span>Date & time</span><span id="bc-datetime">—</span></div>
+    <div class="booking-row"><span>Duration</span><span id="bc-duration">—</span></div>
+    <div class="booking-row"><span>Notes</span><span id="bc-notes">—</span></div>
+    <button class="confirm-btn" onclick="confirmBooking()">Confirm Booking</button>
+  </div>
+
+  <div class="input-row">
+    <input class="msg-input" id="msg-input" type="text" placeholder="Type your message…" />
+    <button class="send-btn" onclick="sendMessage()">
+      <svg viewBox="0 0 24 24"><path d="M2 21l21-9L2 3v7l15 2-15 2z"/></svg>
+    </button>
+  </div>
+
+  <div class="powered">Powered by <a href="https://thebookerai.com">The Booker AI</a></div>
+</div>
+
+<script>
+const CONFIG = {
+  businessName: "Kali Studio",
+  businessType: "tattoo",
+  apiKey: "YOUR_ANTHROPIC_API_KEY",
+};
+
+const initials = CONFIG.businessName.split(' ').map(w=>w[0]).join('').slice(0,2).toUpperCase();
+document.getElementById('biz-avatar').textContent = initials;
+document.getElementById('biz-name').textContent = CONFIG.businessName;
+
+let history = [];
+let bookingData = null;
+
+const systemPrompt = `You are a friendly AI booking assistant for "${CONFIG.businessName}", a ${CONFIG.businessType} studio. Help customers book appointments naturally.
+
+Services available:
+${CONFIG.businessType === 'tattoo' ? `- Custom tattoo (from 1hr)
+- Flash tattoo (30-60min)
+- Tattoo touch-up (30min)
+- Consultation (15min, free)` : `- Haircut & style (45min)
+- Color & highlights (2-3hr)
+- Blowout (30min)
+- Braids & extensions (2-4hr)
+- Trim (20min)`}
+
+When you have enough info (service, date/time), respond ONLY with this JSON:
+{"reply":"friendly confirmation message","booking":{"service":"...","datetime":"...","duration":"...","notes":"..."}}
+
+Otherwise reply in plain text. Keep it SHORT and friendly. Today is ${new Date().toDateString()}.`;
+
+function addBubble(text, role) {
+  const chat = document.getElementById('chat');
+  const b = document.createElement('div');
+  b.className = `bubble ${role}`;
+  b.textContent = text;
+  chat.appendChild(b);
+  chat.scrollTop = chat.scrollHeight;
+}
+
+function addTyping() {
+  const chat = document.getElementById('chat');
+  const b = document.createElement('div');
+  b.className = 'bubble typing';
+  b.id = 'typing';
+  b.innerHTML = '<div class="dot"></div><div class="dot"></div><div class="dot"></div>';
+  chat.appendChild(b);
+  chat.scrollTop = chat.scrollHeight;
+}
+
+function removeTyping() {
+  const t = document.getElementById('typing');
+  if (t) t.remove();
+}
+
+function showQuickReplies(replies) {
+  const qr = document.getElementById('quick-replies');
+  qr.innerHTML = '';
+  replies.forEach(r => {
+    const btn = document.createElement('button');
+    btn.className = 'qr-btn';
+    btn.textContent = r;
+    btn.onclick = () => {
+      document.getElementById('msg-input').value = r;
+      qr.innerHTML = '';
+      sendMessage();
+    };
+    qr.appendChild(btn);
+  });
+}
+
+async function sendMessage() {
+  const input = document.getElementById('msg-input');
+  const msg = input.value.trim();
+  if (!msg) return;
+  input.value = '';
+  document.getElementById('quick-replies').innerHTML = '';
+
+  addBubble(msg, 'user');
+  history.push({ role: 'user', content: msg });
+
+  addTyping();
+
+  try {
+    const res = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        model: 'claude-sonnet-4-20250514',
+        max_tokens: 1000,
+        system: systemPrompt,
+        messages: history
+      })
+    });
+    const data = await res.json();
+    removeTyping();
+
+    const text = data.content?.map(b => b.text || '').join('') || '';
+    history.push({ role: 'assistant', content: text });
+
+    let parsed = null;
+    try {
+      const m = text.match(/\{[\s\S]*\}/);
+      if (m) parsed = JSON.parse(m[0]);
+    } catch(e) {}
+
+    if (parsed?.booking) {
+      addBubble(parsed.reply, 'bot');
+      showBookingCard(parsed.booking);
+    } else {
+      addBubble(text, 'bot');
+      if (history.length === 2) {
+        CONFIG.businessType === 'tattoo'
+          ? showQuickReplies(['Custom tattoo', 'Flash design', 'Touch-up', 'Free consultation'])
+          : showQuickReplies(['Haircut', 'Color & highlights', 'Blowout', 'Braids']);
+      }
+    }
+  } catch(e) {
+    removeTyping();
+    addBubble('Sorry, something went wrong. Please try again!', 'bot');
+  }
+}
+
+function showBookingCard(b) {
+  bookingData = b;
+  document.getElementById('bc-service').textContent = b.service || '—';
+  document.getElementById('bc-datetime').textContent = b.datetime || '—';
+  document.getElementById('bc-duration').textContent = b.duration || '—';
+  document.getElementById('bc-notes').textContent = b.notes || 'None';
+  document.getElementById('booking-card').classList.add('show');
+}
+
+function confirmBooking() {
+  document.getElementById('booking-card').classList.remove('show');
+  addBubble("You're booked! We'll send a reminder 24hrs before. See you soon! 🙌", 'bot');
+  history = [];
+  bookingData = null;
+}
+
+document.getElementById('msg-input').addEventListener('keydown', e => {
+  if (e.key === 'Enter') sendMessage();
+});
+
+window.onload = () => {
+  setTimeout(() => {
+    const greeting = CONFIG.businessType === 'tattoo'
+      ? `Hey! Welcome to ${CONFIG.businessName}. Ready to book your next ink? What are you thinking?`
+      : `Hey! Welcome to ${CONFIG.businessName}. What can I book you in for today?`;
+    addBubble(greeting, 'bot');
+    CONFIG.businessType === 'tattoo'
+      ? showQuickReplies(['Custom tattoo', 'Flash design', 'Touch-up', 'Free consultation'])
+      : showQuickReplies(['Haircut', 'Color & highlights', 'Blowout', 'Braids']);
+  }, 600);
+};
+</script>
+</body>
+</html>

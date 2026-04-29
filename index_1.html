@@ -1,0 +1,378 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>The Booker AI – Admin</title>
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:ital,wght@0,300;0,400;0,500;1,400&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --ink: #0a0a0a;
+    --accent: #c8ff00;
+    --paper: #f5f0e8;
+    --muted: #888;
+    --border: rgba(0,0,0,0.08);
+    --card: #fff;
+    --radius: 16px;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'DM Sans', sans-serif; background: #f0ebe2; min-height: 100vh; color: var(--ink); }
+
+  .sidebar {
+    position: fixed; left: 0; top: 0; bottom: 0; width: 220px;
+    background: var(--ink); padding: 28px 20px;
+    display: flex; flex-direction: column; gap: 4px;
+    z-index: 100;
+  }
+  .logo {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 22px; letter-spacing: 2px;
+    color: #fff; margin-bottom: 32px;
+    display: flex; align-items: center; gap: 10px;
+  }
+  .logo-dot { width: 10px; height: 10px; background: var(--accent); border-radius: 50%; }
+  .nav-item {
+    padding: 10px 14px; border-radius: 10px;
+    font-size: 14px; font-weight: 500; color: #aaa;
+    cursor: pointer; transition: all 0.2s;
+    display: flex; align-items: center; gap: 10px;
+  }
+  .nav-item:hover { background: rgba(255,255,255,0.06); color: #fff; }
+  .nav-item.active { background: rgba(200,255,0,0.12); color: var(--accent); }
+  .nav-icon { font-size: 16px; }
+
+  .main { margin-left: 220px; padding: 32px; }
+  .topbar {
+    display: flex; justify-content: space-between; align-items: center;
+    margin-bottom: 32px;
+  }
+  .page-title { font-family: 'Bebas Neue', sans-serif; font-size: 32px; letter-spacing: 1px; }
+  .add-btn {
+    background: var(--ink); color: var(--accent);
+    border: none; border-radius: 10px; padding: 10px 20px;
+    font-family: 'Bebas Neue', sans-serif; font-size: 16px; letter-spacing: 1px;
+    cursor: pointer; transition: opacity 0.2s;
+  }
+  .add-btn:hover { opacity: 0.85; }
+
+  .stats {
+    display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px;
+    margin-bottom: 32px;
+  }
+  .stat-card {
+    background: var(--card); border-radius: var(--radius);
+    padding: 20px 24px; border: 1px solid var(--border);
+  }
+  .stat-label { font-size: 12px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 8px; }
+  .stat-value { font-family: 'Bebas Neue', sans-serif; font-size: 36px; letter-spacing: 1px; }
+  .stat-sub { font-size: 12px; color: var(--muted); margin-top: 4px; }
+  .stat-accent { color: var(--accent); }
+
+  .section-title {
+    font-family: 'Bebas Neue', sans-serif; font-size: 20px;
+    letter-spacing: 1px; margin-bottom: 16px;
+  }
+
+  .clients-grid {
+    display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+    gap: 16px; margin-bottom: 32px;
+  }
+  .client-card {
+    background: var(--card); border-radius: var(--radius);
+    border: 1px solid var(--border); overflow: hidden;
+    transition: transform 0.2s, box-shadow 0.2s;
+    cursor: pointer;
+  }
+  .client-card:hover { transform: translateY(-2px); box-shadow: 0 8px 24px rgba(0,0,0,0.08); }
+  .client-header {
+    background: var(--ink); padding: 16px 20px;
+    display: flex; align-items: center; gap: 12px;
+  }
+  .client-avatar {
+    width: 40px; height: 40px; border-radius: 10px;
+    background: var(--accent); display: flex; align-items: center; justify-content: center;
+    font-family: 'Bebas Neue', sans-serif; font-size: 18px; color: var(--ink); flex-shrink: 0;
+  }
+  .client-name { font-family: 'Bebas Neue', sans-serif; font-size: 17px; letter-spacing: 1px; color: #fff; }
+  .client-type {
+    display: inline-block; font-size: 11px; font-weight: 500;
+    padding: 3px 10px; border-radius: 100px; margin-top: 2px;
+  }
+  .type-tattoo { background: rgba(200,255,0,0.15); color: var(--accent); }
+  .type-hair { background: rgba(255,180,100,0.2); color: #e8a060; }
+  .client-body { padding: 16px 20px; }
+  .client-stat { display: flex; justify-content: space-between; font-size: 13px; padding: 5px 0; border-bottom: 1px solid var(--border); }
+  .client-stat:last-child { border-bottom: none; }
+  .client-stat span:first-child { color: var(--muted); }
+  .client-stat span:last-child { font-weight: 500; }
+  .client-actions { padding: 12px 20px; display: flex; gap: 8px; border-top: 1px solid var(--border); }
+  .action-btn {
+    flex: 1; padding: 8px; border-radius: 8px; border: 1px solid var(--border);
+    font-size: 12px; font-family: 'DM Sans', sans-serif; font-weight: 500;
+    cursor: pointer; background: transparent; color: var(--ink); transition: all 0.2s;
+  }
+  .action-btn:hover { background: var(--ink); color: #fff; border-color: var(--ink); }
+  .action-btn.primary { background: var(--ink); color: var(--accent); border-color: var(--ink); }
+
+  .bookings-table {
+    background: var(--card); border-radius: var(--radius);
+    border: 1px solid var(--border); overflow: hidden;
+  }
+  table { width: 100%; border-collapse: collapse; }
+  th {
+    text-align: left; padding: 14px 20px;
+    font-size: 11px; text-transform: uppercase; letter-spacing: 0.06em;
+    color: var(--muted); border-bottom: 1px solid var(--border);
+    background: #fafaf8;
+  }
+  td { padding: 14px 20px; font-size: 14px; border-bottom: 1px solid var(--border); }
+  tr:last-child td { border-bottom: none; }
+  tr:hover td { background: #fafaf8; }
+  .badge {
+    display: inline-block; padding: 4px 12px; border-radius: 100px;
+    font-size: 11px; font-weight: 500;
+  }
+  .badge-confirmed { background: #e8fae8; color: #2a8a2a; }
+  .badge-pending { background: #fff8e8; color: #a87020; }
+  .badge-completed { background: #e8e8f8; color: #4040a0; }
+
+  .modal-overlay {
+    display: none; position: fixed; inset: 0;
+    background: rgba(0,0,0,0.6); z-index: 200;
+    align-items: center; justify-content: center;
+  }
+  .modal-overlay.show { display: flex; }
+  .modal {
+    background: var(--card); border-radius: 20px;
+    padding: 32px; width: 100%; max-width: 480px;
+    animation: fadeUp 0.25s ease;
+  }
+  @keyframes fadeUp { from { opacity:0; transform: translateY(12px); } to { opacity:1; transform: translateY(0); } }
+  .modal h2 { font-family: 'Bebas Neue', sans-serif; font-size: 24px; letter-spacing: 1px; margin-bottom: 24px; }
+  .form-group { margin-bottom: 16px; }
+  .form-group label { display: block; font-size: 12px; font-weight: 500; color: var(--muted); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 6px; }
+  .form-group input, .form-group select {
+    width: 100%; padding: 10px 14px; border-radius: 10px;
+    border: 1.5px solid var(--border); font-family: 'DM Sans', sans-serif;
+    font-size: 14px; outline: none; color: var(--ink);
+    transition: border-color 0.2s;
+  }
+  .form-group input:focus, .form-group select:focus { border-color: var(--ink); }
+  .modal-actions { display: flex; gap: 10px; margin-top: 24px; }
+  .embed-box {
+    background: var(--ink); border-radius: 10px; padding: 14px 16px;
+    font-family: monospace; font-size: 12px; color: var(--accent);
+    word-break: break-all; margin-top: 16px; cursor: pointer;
+    position: relative;
+  }
+  .embed-box:hover::after {
+    content: 'Click to copy';
+    position: absolute; top: -28px; right: 0;
+    background: var(--ink); color: #fff; padding: 4px 10px;
+    border-radius: 6px; font-size: 11px; font-family: 'DM Sans', sans-serif;
+  }
+</style>
+</head>
+<body>
+
+<div class="sidebar">
+  <div class="logo"><div class="logo-dot"></div>THE BOOKER AI</div>
+  <div class="nav-item active"><span class="nav-icon">▦</span> Dashboard</div>
+  <div class="nav-item"><span class="nav-icon">◎</span> Clients</div>
+  <div class="nav-item"><span class="nav-icon">◷</span> Bookings</div>
+  <div class="nav-item"><span class="nav-icon">◈</span> Settings</div>
+  <div style="margin-top: auto;">
+    <div class="nav-item"><span class="nav-icon">◉</span> James Mosley</div>
+  </div>
+</div>
+
+<div class="main">
+  <div class="topbar">
+    <div class="page-title">Dashboard</div>
+    <button class="add-btn" onclick="openModal()">+ Add Client</button>
+  </div>
+
+  <div class="stats">
+    <div class="stat-card">
+      <div class="stat-label">Active clients</div>
+      <div class="stat-value" id="stat-clients">4</div>
+      <div class="stat-sub">2 tattoo · 2 hair</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">Bookings this month</div>
+      <div class="stat-value">28</div>
+      <div class="stat-sub stat-accent">↑ 12 from last month</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">Monthly revenue</div>
+      <div class="stat-value">$396</div>
+      <div class="stat-sub">At $99/client avg</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">Avg per client</div>
+      <div class="stat-value">7</div>
+      <div class="stat-sub">bookings/month</div>
+    </div>
+  </div>
+
+  <div class="section-title">Your Clients</div>
+  <div class="clients-grid" id="clients-grid"></div>
+
+  <div class="section-title">Recent Bookings</div>
+  <div class="bookings-table">
+    <table>
+      <thead>
+        <tr>
+          <th>Client business</th>
+          <th>Customer</th>
+          <th>Service</th>
+          <th>Date & time</th>
+          <th>Status</th>
+        </tr>
+      </thead>
+      <tbody id="bookings-body"></tbody>
+    </table>
+  </div>
+</div>
+
+<div class="modal-overlay" id="modal-overlay" onclick="e => { if(e.target===this) closeModal(); }">
+  <div class="modal">
+    <h2 id="modal-title">Add new client</h2>
+    <div class="form-group">
+      <label>Business name</label>
+      <input type="text" id="f-name" placeholder="e.g. Kali Tattoo Studio" />
+    </div>
+    <div class="form-group">
+      <label>Business type</label>
+      <select id="f-type">
+        <option value="tattoo">Tattoo studio</option>
+        <option value="hair">Hair salon</option>
+      </select>
+    </div>
+    <div class="form-group">
+      <label>Owner email</label>
+      <input type="email" id="f-email" placeholder="owner@example.com" />
+    </div>
+    <div class="form-group">
+      <label>Monthly plan</label>
+      <select id="f-plan">
+        <option value="99">Starter – $99/mo</option>
+        <option value="149">Pro – $149/mo</option>
+        <option value="199">Premium – $199/mo</option>
+      </select>
+    </div>
+    <div id="embed-section" style="display:none;">
+      <div class="form-group" style="margin-bottom:0;">
+        <label>Embed code (send to client)</label>
+      </div>
+      <div class="embed-box" id="embed-code" onclick="copyEmbed()"></div>
+    </div>
+    <div class="modal-actions">
+      <button class="action-btn" onclick="closeModal()">Cancel</button>
+      <button class="action-btn primary" onclick="saveClient()">Add client & generate widget</button>
+    </div>
+  </div>
+</div>
+
+<script>
+let clients = [
+  { id: 1, name: "Kali Tattoo Studio", type: "tattoo", email: "kali@example.com", plan: 99, bookings: 11, joined: "Mar 2026" },
+  { id: 2, name: "Glamour Hair Lounge", type: "hair", email: "glamour@example.com", plan: 149, bookings: 8, joined: "Mar 2026" },
+  { id: 3, name: "Inkwell Tattoo", type: "tattoo", email: "inkwell@example.com", plan: 99, bookings: 5, joined: "Apr 2026" },
+  { id: 4, name: "Mane Event Salon", type: "hair", email: "mane@example.com", plan: 99, bookings: 4, joined: "Apr 2026" },
+];
+
+const bookings = [
+  { client: "Kali Tattoo Studio", customer: "Marcus J.", service: "Custom sleeve consult", datetime: "Today, 2:00 PM", status: "confirmed" },
+  { client: "Glamour Hair Lounge", customer: "Destiny W.", service: "Color & highlights", datetime: "Today, 3:30 PM", status: "confirmed" },
+  { client: "Kali Tattoo Studio", customer: "Tyler R.", service: "Flash tattoo", datetime: "Tomorrow, 11:00 AM", status: "pending" },
+  { client: "Mane Event Salon", customer: "Aisha B.", service: "Braids & extensions", datetime: "Tomorrow, 1:00 PM", status: "pending" },
+  { client: "Inkwell Tattoo", customer: "Jordan M.", service: "Touch-up", datetime: "Apr 30, 4:00 PM", status: "completed" },
+];
+
+function renderClients() {
+  const grid = document.getElementById('clients-grid');
+  grid.innerHTML = clients.map(c => `
+    <div class="client-card">
+      <div class="client-header">
+        <div class="client-avatar">${c.name.split(' ').map(w=>w[0]).join('').slice(0,2).toUpperCase()}</div>
+        <div>
+          <div class="client-name">${c.name}</div>
+          <span class="client-type type-${c.type}">${c.type === 'tattoo' ? 'Tattoo Studio' : 'Hair Salon'}</span>
+        </div>
+      </div>
+      <div class="client-body">
+        <div class="client-stat"><span>Monthly plan</span><span>$${c.plan}/mo</span></div>
+        <div class="client-stat"><span>Bookings this month</span><span>${c.bookings}</span></div>
+        <div class="client-stat"><span>Client since</span><span>${c.joined}</span></div>
+      </div>
+      <div class="client-actions">
+        <button class="action-btn" onclick="showEmbed('${c.name}', '${c.type}')">Get embed code</button>
+        <button class="action-btn primary">View bookings</button>
+      </div>
+    </div>
+  `).join('');
+  document.getElementById('stat-clients').textContent = clients.length;
+}
+
+function renderBookings() {
+  document.getElementById('bookings-body').innerHTML = bookings.map(b => `
+    <tr>
+      <td>${b.client}</td>
+      <td>${b.customer}</td>
+      <td>${b.service}</td>
+      <td>${b.datetime}</td>
+      <td><span class="badge badge-${b.status}">${b.status}</span></td>
+    </tr>
+  `).join('');
+}
+
+function openModal() {
+  document.getElementById('modal-overlay').classList.add('show');
+  document.getElementById('embed-section').style.display = 'none';
+  document.getElementById('modal-title').textContent = 'Add new client';
+}
+
+function closeModal() {
+  document.getElementById('modal-overlay').classList.remove('show');
+}
+
+function saveClient() {
+  const name = document.getElementById('f-name').value.trim();
+  const type = document.getElementById('f-type').value;
+  const email = document.getElementById('f-email').value.trim();
+  const plan = parseInt(document.getElementById('f-plan').value);
+  if (!name || !email) { alert('Please fill in all fields'); return; }
+  const newClient = { id: clients.length + 1, name, type, email, plan, bookings: 0, joined: 'Apr 2026' };
+  clients.push(newClient);
+  renderClients();
+  showEmbed(name, type);
+  document.getElementById('modal-title').textContent = 'Client added!';
+  document.querySelector('.modal .action-btn.primary').textContent = 'Close';
+  document.querySelector('.modal .action-btn.primary').onclick = closeModal;
+}
+
+function showEmbed(name, type) {
+  const code = `<script src="https://thebookerai.com/widget.js" data-business="${name}" data-type="${type}"><\/script>`;
+  document.getElementById('embed-code').textContent = code;
+  document.getElementById('embed-section').style.display = 'block';
+}
+
+function copyEmbed() {
+  const text = document.getElementById('embed-code').textContent;
+  navigator.clipboard.writeText(text).then(() => {
+    const box = document.getElementById('embed-code');
+    box.style.background = '#1a3a1a';
+    setTimeout(() => box.style.background = '', 600);
+  });
+}
+
+document.getElementById('modal-overlay').addEventListener('click', function(e) {
+  if (e.target === this) closeModal();
+});
+
+renderClients();
+renderBookings();
+</script>
+</body>
+</html>
