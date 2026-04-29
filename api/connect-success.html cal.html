@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Calendar Connected – The Booker AI</title>
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'DM Sans', sans-serif; background: #0a0a0a; min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: 20px; color: #fff; }
+  .card { background: #161616; border: 1px solid #222; border-radius: 24px; padding: 40px; max-width: 460px; width: 100%; text-align: center; }
+  .logo { font-family: 'Bebas Neue', sans-serif; font-size: 24px; letter-spacing: 3px; margin-bottom: 32px; }
+  .logo span { color: #c8ff00; }
+  .icon { font-size: 64px; margin-bottom: 24px; }
+  .title { font-family: 'Bebas Neue', sans-serif; font-size: 32px; letter-spacing: 1px; margin-bottom: 12px; }
+  .title.success { color: #c8ff00; }
+  .title.error { color: #ff6b6b; }
+  .subtitle { font-size: 15px; color: #888; line-height: 1.6; margin-bottom: 32px; }
+  .info-box { background: #1a1a1a; border: 1px solid #333; border-radius: 12px; padding: 16px 20px; margin-bottom: 24px; text-align: left; }
+  .info-row { display: flex; justify-content: space-between; font-size: 14px; padding: 6px 0; border-bottom: 1px solid #222; }
+  .info-row:last-child { border-bottom: none; }
+  .info-row span:first-child { color: #888; }
+  .info-row span:last-child { font-weight: 500; color: #fff; }
+  .done-btn { width: 100%; padding: 14px; background: #c8ff00; color: #0a0a0a; border: none; border-radius: 12px; font-family: 'Bebas Neue', sans-serif; font-size: 16px; letter-spacing: 1px; cursor: pointer; margin-bottom: 12px; }
+  .booking-link { font-size: 13px; color: #888; word-break: break-all; }
+  .booking-link a { color: #c8ff00; text-decoration: none; }
+  .powered { font-size: 11px; color: #444; margin-top: 24px; }
+</style>
+</head>
+<body>
+<div class="card">
+  <div class="logo">THE <span>BOOKER</span> AI</div>
+  <div id="content"></div>
+  <p class="powered">Powered by The Booker AI · thebookerai.com</p>
+</div>
+
+<script>
+const params = new URLSearchParams(window.location.search);
+const status = params.get('status') || 'success';
+const biz = params.get('biz') || 'Your business';
+const slug = params.get('slug') || 'demo';
+const bookingLink = `https://thebookerai.com/${slug}.html`;
+
+const content = document.getElementById('content');
+
+if (status === 'success') {
+  content.innerHTML = `
+    <div class="icon">🎉</div>
+    <div class="title success">Calendar connected!</div>
+    <p class="subtitle">Your Google Calendar is now linked to The Booker AI. Customers can start booking automatically!</p>
+    <div class="info-box">
+      <div class="info-row"><span>Business</span><span>${biz}</span></div>
+      <div class="info-row"><span>Status</span><span>✅ Live</span></div>
+      <div class="info-row"><span>Bookings go to</span><span>Your Google Calendar</span></div>
+    </div>
+    <p class="booking-link" style="margin-bottom:20px;">Your booking link: <a href="${bookingLink}">${bookingLink}</a></p>
+    <button class="done-btn" onclick="window.close()">Done — close this window</button>
+  `;
+} else {
+  content.innerHTML = `
+    <div class="icon">❌</div>
+    <div class="title error">Something went wrong</div>
+    <p class="subtitle">We couldn't connect your calendar. Please try again or contact support at thebookerai.com</p>
+    <button class="done-btn" onclick="history.back()">Try again</button>
+  `;
+}
+</script>
+</body>
+</html>
