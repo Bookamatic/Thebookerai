@@ -32,7 +32,33 @@ export default async function handler(req, res) {
       return res.redirect(`/connect-success.html?biz=${encodeURIComponent(bizInfo.biz)}&slug=${bizInfo.slug}&status=error`);
     }
 
-    console.log(`Calendar connected for: ${bizInfo.biz}`);
+    const supabaseUrl = process.env.SUPABASE_URL;
+    const supabaseKey = process.env.SUPABASE_SERVICE_KEY;
+
+    const saveResponse = await fetch(`${supabaseUrl}/rest/v1/clients`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'apikey': supabaseKey,
+        'Authorization': `Bearer ${supabaseKey}`,
+        'Prefer': 'resolution=merge-duplicates,return=minimal'
+      },
+      body: JSON.stringify({
+        slug: bizInfo.slug,
+        business_name: bizInfo.biz,
+        access_token: tokens.access_token,
+        refresh_token: tokens.refresh_token || null,
+        token_expiry: tokens.expires_in ? Math.floor(Date.now() / 1000) + tokens.expires_in : null,
+        calendar_id: 'primary'
+      })
+    });
+
+    if (!saveResponse.ok) {
+      const err = await saveResponse.text();
+      console.error('Supabase save error:', err);
+    } else {
+      console.log(`Calendar connected and saved for: ${bizInfo.biz}`);
+    }
 
     return res.redirect(`/connect-success.html?biz=${encodeURIComponent(bizInfo.biz)}&slug=${bizInfo.slug}&status=success`);
 
