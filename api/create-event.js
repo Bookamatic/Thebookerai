@@ -6,7 +6,7 @@ export default async function handler(req, res) {
   if (req.method === 'OPTIONS') return res.status(200).end();
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
 
-  const { slug, datetime, duration_minutes, service, notes } = req.body;
+  const { slug, datetime, duration_minutes, service, notes, timezone } = req.body;
 
   if (!slug || !datetime) {
     return res.status(400).json({ error: 'Missing required fields' });
@@ -64,8 +64,15 @@ export default async function handler(req, res) {
       }
     }
 
-    const startTime = new Date(datetime).toISOString();
-    const endTime = new Date(new Date(datetime).getTime() + (duration_minutes || 30) * 60000).toISOString();
+    const tz = timezone || 'America/New_York';
+
+    // Format datetime as local time string (no UTC conversion) so Google Calendar
+    // correctly interprets it in the business timezone
+    const pad = n => String(n).padStart(2, '0');
+    const d = new Date(datetime);
+    const startTime = `${d.getUTCFullYear()}-${pad(d.getUTCMonth()+1)}-${pad(d.getUTCDate())}T${pad(d.getUTCHours())}:${pad(d.getUTCMinutes())}:00`;
+    const endDate = new Date(d.getTime() + (duration_minutes || 30) * 60000);
+    const endTime = `${endDate.getUTCFullYear()}-${pad(endDate.getUTCMonth()+1)}-${pad(endDate.getUTCDate())}T${pad(endDate.getUTCHours())}:${pad(endDate.getUTCMinutes())}:00`;
 
     const eventRes = await fetch(
       `https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(calendar_id || 'primary')}/events`,
@@ -78,8 +85,8 @@ export default async function handler(req, res) {
         body: JSON.stringify({
           summary: service || 'Appointment',
           description: notes ? `Notes: ${notes}` : 'Booked via The Booker AI',
-          start: { dateTime: startTime },
-          end: { dateTime: endTime }
+          start: { dateTime: startTime, timeZone: tz },
+          end: { dateTime: endTime, timeZone: tz }
         })
       }
     );

@@ -249,7 +249,8 @@ async function confirmBooking() {
         datetime: bookingData.datetime,
         duration_minutes: 30,
         service: bookingData.service,
-        notes: bookingData.notes
+        notes: bookingData.notes,
+        timezone: CONFIG.timezone
       })
     });
     const data = await res.json();
