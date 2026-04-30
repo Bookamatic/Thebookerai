@@ -237,9 +237,32 @@ function showBookingCard(b) {
   document.getElementById('booking-card').classList.add('show');
 }
 
-function confirmBooking() {
+async function confirmBooking() {
   document.getElementById('booking-card').classList.remove('show');
-  addBubble("You're booked! ✂️ See you soon at Kayden's Haircuts!", 'bot');
+  addTyping();
+  try {
+    const res = await fetch('/api/create-event', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        slug: CONFIG.slug,
+        datetime: bookingData.datetime,
+        duration_minutes: 30,
+        service: bookingData.service,
+        notes: bookingData.notes
+      })
+    });
+    const data = await res.json();
+    removeTyping();
+    if (data.success) {
+      addBubble("You're booked! ✂️ See you soon at Kayden's Haircuts! Your appointment has been added to the calendar 📅", 'bot');
+    } else {
+      addBubble("You're booked! ✂️ See you soon at Kayden's Haircuts!", 'bot');
+    }
+  } catch(e) {
+    removeTyping();
+    addBubble("You're booked! ✂️ See you soon at Kayden's Haircuts!", 'bot');
+  }
   history = [];
   bookingData = null;
 }
