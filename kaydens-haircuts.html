@@ -49,6 +49,20 @@
   .cal-badge { display: flex; align-items: center; gap: 6px; font-size: 11px; color: var(--accent); background: rgba(200,255,0,0.1); padding: 4px 10px; border-radius: 6px; margin-top: 10px; }
   .powered { text-align: center; font-size: 11px; color: var(--muted); padding: 12px; background: var(--paper); }
   .powered a { color: var(--ink); font-weight: 500; text-decoration: none; }
+  .time-picker { padding: 16px 20px; background: var(--paper); border-top: 1px solid rgba(0,0,0,0.08); display: none; }
+  .time-picker.show { display: block; animation: fadeUp 0.3s ease; }
+  .picker-label { font-size: 11px; font-weight: 600; color: var(--muted); margin-bottom: 10px; text-transform: uppercase; letter-spacing: 0.5px; }
+  .day-tabs { display: flex; gap: 6px; overflow-x: auto; margin-bottom: 14px; padding-bottom: 2px; scrollbar-width: none; }
+  .day-tabs::-webkit-scrollbar { display: none; }
+  .day-tab { flex-shrink: 0; padding: 8px 10px; border-radius: 10px; font-size: 11px; font-weight: 500; cursor: pointer; border: 1.5px solid rgba(0,0,0,0.12); background: transparent; color: var(--ink); transition: all 0.2s; text-align: center; min-width: 48px; }
+  .day-tab.active { background: var(--ink); color: var(--accent); border-color: var(--ink); }
+  .day-tab.closed { opacity: 0.35; cursor: not-allowed; }
+  .slots-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; max-height: 150px; overflow-y: auto; }
+  .slot-btn { padding: 8px 4px; border-radius: 8px; font-size: 12px; font-weight: 500; cursor: pointer; border: none; text-align: center; transition: all 0.15s; }
+  .slot-btn.available { background: rgba(200,255,0,0.15); color: #3a5200; }
+  .slot-btn.available:hover { background: var(--accent); color: var(--ink); transform: scale(1.04); }
+  .slot-btn.booked { background: #f0f0f0; color: #bbb; cursor: not-allowed; text-decoration: line-through; }
+  .slots-loading { font-size: 13px; color: var(--muted); text-align: center; padding: 20px 0; }
 </style>
 </head>
 <body>
@@ -70,6 +84,11 @@
     <div class="booking-row"><span>Notes</span><span id="bc-notes">—</span></div>
     <button class="confirm-btn" onclick="confirmBooking()">Confirm Booking</button>
     <div class="cal-badge">📅 Will be added to Kayden's calendar automatically</div>
+  </div>
+  <div class="time-picker" id="time-picker">
+    <div class="picker-label">Pick a date & time</div>
+    <div class="day-tabs" id="day-tabs"></div>
+    <div class="slots-grid" id="slots-grid"><div class="slots-loading">Loading availability…</div></div>
   </div>
   <div class="input-row">
     <input class="msg-input" id="msg-input" type="text" placeholder="Type your message…" />
@@ -144,13 +163,23 @@ function addTyping() {
 
 function removeTyping() { const t = document.getElementById('typing'); if (t) t.remove(); }
 
-function showQuickReplies(replies) {
+function showQuickReplies(replies, isService = false) {
   const qr = document.getElementById('quick-replies');
   qr.innerHTML = '';
   replies.forEach(r => {
     const btn = document.createElement('button');
     btn.className = 'qr-btn'; btn.textContent = r;
-    btn.onclick = () => { document.getElementById('msg-input').value = r; qr.innerHTML = ''; sendMessage(); };
+    btn.onclick = () => {
+      qr.innerHTML = '';
+      if (isService) {
+        addBubble(r, 'user');
+        addBubble("Great choice! Pick a date and time below 👇", 'bot');
+        showTimePicker(r);
+      } else {
+        document.getElementById('msg-input').value = r;
+        sendMessage();
+      }
+    };
     qr.appendChild(btn);
   });
 }
@@ -223,7 +252,7 @@ async function sendMessage() {
       }
     } else {
       addBubble(text, 'bot');
-      if (history.length === 2) showQuickReplies(['Haircut', 'Fade', 'Beard trim', 'Shape up']);
+      if (history.length === 2) showQuickReplies(['Haircut', 'Fade', 'Beard trim', 'Shape up'], true);
     }
   } catch(e) { removeTyping(); addBubble('Sorry, something went wrong. Please try again!', 'bot'); }
 }
@@ -268,12 +297,140 @@ async function confirmBooking() {
   bookingData = null;
 }
 
+// --- TIME PICKER ---
+let busySlots = [];
+let selectedService = null;
+let selectedDay = null;
+
+const SERVICE_DURATIONS = {
+  'haircut': 30, 'haircut & beard trim': 45, 'fade': 30,
+  'shape up': 20, 'wash & cut': 45, 'kids haircut': 20
+};
+
+async function showTimePicker(service) {
+  selectedService = service;
+  document.getElementById('time-picker').classList.add('show');
+  document.getElementById('quick-replies').innerHTML = '';
+
+  // Fetch busy slots for next 7 days
+  const now = new Date();
+  const end = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000);
+  try {
+    const res = await fetch('/api/get-slots', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ slug: CONFIG.slug, start_date: now.toISOString(), end_date: end.toISOString() })
+    });
+    const data = await res.json();
+    busySlots = data.busy || [];
+  } catch(e) { busySlots = []; }
+
+  buildDayTabs();
+}
+
+function buildDayTabs() {
+  const tabs = document.getElementById('day-tabs');
+  tabs.innerHTML = '';
+  const days = ['sun','mon','tue','wed','thu','fri','sat'];
+  const dayNames = ['sunday','monday','tuesday','wednesday','thursday','friday','saturday'];
+  const now = new Date();
+
+  for (let i = 0; i < 7; i++) {
+    const d = new Date(now);
+    d.setDate(now.getDate() + i);
+    const dayName = dayNames[d.getDay()];
+    const isClosed = !CONFIG.hours[dayName];
+    const tab = document.createElement('button');
+    tab.className = 'day-tab' + (isClosed ? ' closed' : '') + (i === 0 ? ' active' : '');
+    tab.innerHTML = `<div>${days[d.getDay()].toUpperCase()}</div><div style="font-size:13px;font-weight:700">${d.getDate()}</div>`;
+    if (!isClosed) {
+      tab.onclick = () => {
+        document.querySelectorAll('.day-tab').forEach(t => t.classList.remove('active'));
+        tab.classList.add('active');
+        selectedDay = d;
+        buildSlots(d);
+      };
+    }
+    tabs.appendChild(tab);
+    if (i === 0 && !isClosed) { selectedDay = d; buildSlots(d); }
+  }
+}
+
+function buildSlots(date) {
+  const grid = document.getElementById('slots-grid');
+  grid.innerHTML = '';
+  const dayNames = ['sunday','monday','tuesday','wednesday','thursday','friday','saturday'];
+  const dayName = dayNames[date.getDay()];
+  const hours = CONFIG.hours[dayName];
+  if (!hours) { grid.innerHTML = '<div class="slots-loading">Closed</div>'; return; }
+
+  const [openH, openM] = hours.open.split(':').map(Number);
+  const [closeH, closeM] = hours.close.split(':').map(Number);
+  const duration = SERVICE_DURATIONS[selectedService?.toLowerCase()] || 30;
+
+  let t = openH * 60 + openM;
+  const end = closeH * 60 + closeM;
+  const now = new Date();
+
+  while (t + duration <= end) {
+    const h = Math.floor(t / 60);
+    const m = t % 60;
+    const slotDate = new Date(date);
+    slotDate.setHours(h, m, 0, 0);
+
+    // Skip past times
+    if (slotDate <= now) { t += 30; continue; }
+
+    const slotEnd = new Date(slotDate.getTime() + duration * 60000);
+    const isBooked = busySlots.some(b => {
+      const bs = new Date(b.start);
+      const be = new Date(b.end);
+      return slotDate < be && slotEnd > bs;
+    });
+
+    const btn = document.createElement('button');
+    btn.className = 'slot-btn ' + (isBooked ? 'booked' : 'available');
+    btn.textContent = `${h % 12 || 12}:${String(m).padStart(2,'0')}${h < 12 ? 'am' : 'pm'}`;
+    if (!isBooked) {
+      btn.onclick = () => selectSlot(slotDate, duration);
+    }
+    grid.appendChild(btn);
+    t += 30;
+  }
+
+  if (grid.children.length === 0) {
+    grid.innerHTML = '<div class="slots-loading">No available slots</div>';
+  }
+}
+
+function selectSlot(date, duration) {
+  document.getElementById('time-picker').classList.remove('show');
+  const days = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
+  const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  const h = date.getHours();
+  const m = date.getMinutes();
+  const timeStr = `${h % 12 || 12}:${String(m).padStart(2,'0')}${h < 12 ? 'am' : 'pm'}`;
+  const dateStr = `${days[date.getDay()]}, ${months[date.getMonth()]} ${date.getDate()}`;
+  const pad = n => String(n).padStart(2,'0');
+  const isoStr = `${date.getFullYear()}-${pad(date.getMonth()+1)}-${pad(date.getDate())}T${pad(h)}:${pad(m)}:00`;
+
+  showBookingCard({
+    service: selectedService,
+    datetime: isoStr,
+    duration: `${duration} min`,
+    notes: ''
+  });
+
+  addBubble(`${selectedService} on ${dateStr} at ${timeStr}`, 'user');
+  history.push({ role: 'user', content: `Book ${selectedService} on ${dateStr} at ${timeStr}` });
+}
+
 document.getElementById('msg-input').addEventListener('keydown', e => { if (e.key === 'Enter') sendMessage(); });
 
 window.onload = () => {
   setTimeout(() => {
     addBubble("What's good! Welcome to Kayden's Haircuts ✂️ What can I book you in for?", 'bot');
-    showQuickReplies(['Haircut', 'Fade', 'Beard trim', 'Shape up']);
+    showQuickReplies(['Haircut', 'Fade', 'Beard trim', 'Shape up'], true);
   }, 600);
 };
 </script>
